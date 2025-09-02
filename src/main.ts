@@ -70,9 +70,10 @@ function createBoids() {
     coneGeometry.setAttribute('instanceId',new THREE.InstancedBufferAttribute(instanceIds,1));
 
     // Shader material personnalisé
-    const material=new THREE.ShaderMaterial({
+   const material = new THREE.ShaderMaterial({
         uniforms: {
-            texturePosition: { value: null }
+            texturePosition: { value: null },
+            textureWidth: { value: WIDTH } // AJOUTER CETTE LIGNE
         },
         vertexShader: boidVertexShader,
         fragmentShader: boidFragmentShader

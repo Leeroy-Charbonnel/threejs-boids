@@ -1,13 +1,15 @@
 uniform sampler2D texturePosition;
+uniform float textureWidth;
 varying vec3 vColor;
+
 
 void main() {
     // Utiliser gl_InstanceID au lieu d'un attribut
     float instanceId = float(gl_InstanceID);
     
-    // Coordonnées UV dans la texture 32x32
-    float u = mod(instanceId, 32.0) / 32.0;
-    float v = floor(instanceId / 32.0) / 32.0;
+    // Coordonnées UV dans la texture
+    float u = mod(instanceId, textureWidth) / textureWidth;
+    float v = floor(instanceId / textureWidth) / textureWidth;
     vec2 uv = vec2(u, v);
     
     // Lire la position depuis la texture GPGPU
