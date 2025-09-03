@@ -11,9 +11,9 @@ import boidVertexShader from './shaders/boidVertex.glsl?raw';
 import boidFragmentShader from './shaders/boidFragment.glsl?raw';
 
 //CONST
-const WIDTH=16;
+const WIDTH=4;
 const PARTICLES_COUNT=WIDTH*WIDTH;
-const BOUNDS=100;
+const BOUNDS=50;
 const BOUNDS_HALF=BOUNDS/2;
 
 //VARIABLES
@@ -42,8 +42,8 @@ renderer.setSize(window.innerWidth,window.innerHeight);
 renderer.setAnimationLoop(animate);
 document.body.appendChild(renderer.domElement);
 
-const geometry=new THREE.BoxGeometry(1,1,1);
-const material=new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+const geometry=new THREE.BoxGeometry(BOUNDS,BOUNDS,BOUNDS);
+const material=new THREE.MeshBasicMaterial({ color: 0x00ff00,wireframe: true });
 const cube=new THREE.Mesh(geometry,material);
 scene.add(cube);
 
@@ -58,31 +58,15 @@ function createBoids() {
     const coneGeometry=new THREE.ConeGeometry(1,3,6);
     coneGeometry.rotateX(Math.PI/2);
 
-    // Ajouter l'attribut instanceId pour chaque vertex
-    const vertexCount=coneGeometry.attributes.position.count;
-    const instanceIds=new Float32Array(vertexCount);
-
-    // Chaque vertex du cône aura le même instanceId (sera différencié par gl_InstanceID)
-    for(let i=0;i<vertexCount;i++) {
-        instanceIds[i]=0; // Sera remplacé par gl_InstanceID dans le shader
-    }
-
-    coneGeometry.setAttribute('instanceId',new THREE.InstancedBufferAttribute(instanceIds,1));
-
-    // Shader material personnalisé
-   const material = new THREE.ShaderMaterial({
-        uniforms: {
-            texturePosition: { value: null },
-            textureWidth: { value: WIDTH } // AJOUTER CETTE LIGNE
-        },
+    const material=new THREE.ShaderMaterial({
+        uniforms: { texturePosition: { value: null },textureWidth: { value: WIDTH } },
         vertexShader: boidVertexShader,
         fragmentShader: boidFragmentShader
     });
 
-    // Créer l'InstancedMesh avec le shader personnalisé
     const instancedMesh=new THREE.InstancedMesh(coneGeometry,material,PARTICLES_COUNT);
 
-    // Initialiser les matrices (seront ignorées par notre shader)
+    //Init matrices, will be overwritten in shader
     const matrix=new THREE.Matrix4();
     for(let i=0;i<PARTICLES_COUNT;i++) {
         matrix.setPosition(0,0,0);
@@ -116,11 +100,8 @@ function initComputeRenderer() {
     positionUniforms=positionVariable.material.uniforms;
     velocityUniforms=velocityVariable.material.uniforms;
 
-    positionUniforms['time']={ value: 0.0 };
     positionUniforms['delta']={ value: 0.0 };
-    velocityUniforms['time']={ value: 1.0 };
-    velocityUniforms['delta']={ value: 0.0 };
-    velocityUniforms['boundsHalf']={ value: BOUNDS_HALF };
+    positionUniforms['boundsHalf']={ value: BOUNDS_HALF };
 
     const error=gpuCompute.init();
     if(error!==null) {
@@ -144,9 +125,9 @@ function fillVelocityTexture(texture: THREE.DataTexture) {
         const y=Math.random()-0.5;
         const z=Math.random()-0.5;
 
-        imageData[p+0]=x * 0.1; //RED = X VELOCITY
-        imageData[p+1]=y * 0.1; //GREEN = Y VELOCITY
-        imageData[p+2]=z * 0.1; //BLUE = Z VELOCITY
+        imageData[p+0]=x*0.5; //RED = X VELOCITY
+        imageData[p+1]=y*0.5; //GREEN = Y VELOCITY
+        imageData[p+2]=z*0.5; //BLUE = Z VELOCITY
         imageData[p+3]=1;      //ALPHA = FREE
     }
 }
@@ -164,10 +145,7 @@ function animate() {
     let delta=(now-last)/1000;
     last=now;
 
-    positionUniforms['time'].value=now;
     positionUniforms['delta'].value=delta;
-    velocityUniforms['time'].value=now;
-    velocityUniforms['delta'].value=delta;
 
     gpuCompute.compute();
 
