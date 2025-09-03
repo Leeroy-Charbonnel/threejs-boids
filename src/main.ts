@@ -11,9 +11,9 @@ import boidVertexShader from './shaders/boidVertex.glsl?raw';
 import boidFragmentShader from './shaders/boidFragment.glsl?raw';
 
 //CONST
-const WIDTH=10;
+const WIDTH=32;
 const PARTICLES_COUNT=WIDTH*WIDTH;
-const BOUNDS=50;
+const BOUNDS=200;
 const BOUNDS_HALF=BOUNDS/2;
 
 //VARIABLES
@@ -35,7 +35,69 @@ var stats=new Stats();
 document.body.appendChild(stats.dom);
 
 const gui=new GUI();
-gui.add(document,'title');
+const params={
+    alignmentForce: 0.1,
+    cohesionForce: 0,
+    separationForce: 0.2,
+    minSpeed: 0.5,
+    maxSpeed: 3.0,
+
+
+    separationDistance: 1.5,
+    alignmentDistance: 4.0,
+    cohesionDistance: 12.0,
+
+
+};
+
+//SPEED
+const speedFolder=gui.addFolder('Vitesse');
+speedFolder.add(params,'minSpeed',0.1,2.0).name('Min').onChange((value: number) => {
+    velocityUniforms['minSpeed'].value=value;
+});
+speedFolder.add(params,'maxSpeed',1.0,10.0).name('Max').onChange((value: number) => {
+    velocityUniforms['maxSpeed'].value=value;
+});
+
+//SEPARATION
+const separationFolder=gui.addFolder('Séparation');
+separationFolder.add(params,'separationDistance',0.1,BOUNDS_HALF)
+    .name('Distance')
+    .onChange((value: number) => {
+        velocityUniforms['separationDistance'].value=value;
+    });
+separationFolder.add(params,'separationForce',0,2.0)
+    .name('Force')
+    .onChange((value: number) => {
+        velocityUniforms['separationForce'].value=value;
+    });
+
+//ALIGNEMENT
+const alignmentFolder=gui.addFolder('Alignement');
+alignmentFolder.add(params,'alignmentDistance',1.0,BOUNDS_HALF)
+    .name('Distance')
+    .onChange((value: number) => {
+        velocityUniforms['alignmentDistance'].value=value;
+    });
+alignmentFolder.add(params,'alignmentForce',0,0.25)
+    .name('Force')
+    .onChange((value: number) => {
+        velocityUniforms['alignmentForce'].value=value;
+    });
+
+//COHÉSION
+const cohesionFolder=gui.addFolder('Cohésion');
+cohesionFolder.add(params,'cohesionDistance',1.0,BOUNDS_HALF)
+    .name('Distance')
+    .onChange((value) => {
+        velocityUniforms['cohesionDistance'].value=value;
+    });
+cohesionFolder.add(params,'cohesionForce',0,0.25)
+    .name('Force')
+    .onChange((value) => {
+        velocityUniforms['cohesionForce'].value=value;
+    });
+
 
 
 renderer.setSize(window.innerWidth,window.innerHeight);
@@ -51,7 +113,7 @@ scene.add(cube);
 initComputeRenderer();
 boidsMesh=createBoids();
 
-camera.position.z=10;
+camera.position.z=BOUNDS_HALF*4;
 controls.update();
 
 function createBoids() {
@@ -120,6 +182,24 @@ function initComputeRenderer() {
     positionUniforms['delta']={ value: 0.0 };
     positionUniforms['boundsHalf']={ value: BOUNDS_HALF };
 
+
+    velocityUniforms['alignmentDistance']={ value: params.alignmentDistance };
+    velocityUniforms['alignmentForce']={ value: params.alignmentForce };
+
+    velocityUniforms['cohesionDistance']={ value: params.cohesionDistance };
+    velocityUniforms['cohesionForce']={ value: params.cohesionForce };
+
+    velocityUniforms['separationDistance']={ value: params.separationDistance };
+    velocityUniforms['separationForce']={ value: params.separationForce };
+
+
+    velocityUniforms['minSpeed']={ value: params.minSpeed };
+    velocityUniforms['maxSpeed']={ value: params.maxSpeed };
+
+    velocityUniforms['texturePosition']={ value: null };
+    velocityUniforms['textureWidth']={ value: WIDTH };
+
+
     const error=gpuCompute.init();
     if(error!==null) {
         console.error('Erreur GPGPU:',error);
@@ -128,9 +208,9 @@ function initComputeRenderer() {
 function fillPositionTexture(texture: THREE.DataTexture) {
     const imageData=texture.image.data;
     for(let p=0,length=imageData.length;p<length;p+=4) {
-        imageData[p+0]=0; //RED = X POS
-        imageData[p+1]=0; //GREEN = Y POS
-        imageData[p+2]=0; //BLUE = Z POS
+        imageData[p+0]=(Math.random()-0.5)*BOUNDS; //RED = X POS
+        imageData[p+1]=(Math.random()-0.5)*BOUNDS; //GREEN = Y POS
+        imageData[p+2]=(Math.random()-0.5)*BOUNDS; //BLUE = Z POS
         imageData[p+3]=1; //ALPHA = FREE
     }
 }
@@ -142,9 +222,9 @@ function fillVelocityTexture(texture: THREE.DataTexture) {
         const y=Math.random()-0.5;
         const z=Math.random()-0.5;
 
-        imageData[p+0]=x*0.5; //RED = X VELOCITY
-        imageData[p+1]=y*0.5; //GREEN = Y VELOCITY
-        imageData[p+2]=z*0.5; //BLUE = Z VELOCITY
+        imageData[p+0]=x; //RED = X VELOCITY
+        imageData[p+1]=y; //GREEN = Y VELOCITY
+        imageData[p+2]=z; //BLUE = Z VELOCITY
         imageData[p+3]=1;      //ALPHA = FREE
     }
 }

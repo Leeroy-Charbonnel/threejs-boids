@@ -1,6 +1,137 @@
+uniform float alignmentDistance;
+uniform float alignmentForce;
+uniform float cohesionDistance;
+uniform float cohesionForce;
+uniform float separationDistance;
+uniform float separationForce;
+
+uniform float textureWidth;
+uniform float minSpeed;
+uniform float maxSpeed;
+
 void main() {
-    vec2 uv = gl_FragCoord.xy / resolution.xy;
-    vec3 velocity = texture2D(textureVelocity, uv).xyz;
-    
-    gl_FragColor = vec4(velocity, 1.0);
+  vec2 uv = gl_FragCoord.xy / resolution.xy;
+  vec3 velocity = texture2D(textureVelocity, uv).xyz;
+  vec3 position = texture2D(texturePosition, uv).xyz;
+
+  //ALIGNMENT
+  vec3 averageVelocity = vec3(0.0);
+  float alignmentNeighbors = 0.0;
+  //COHESION
+  vec3 centerOfMass = vec3(0.0);
+  float cohesionNeighbors = 0.0;
+  //SEPARATION
+  vec3 separationVector = vec3(0.0);
+  float separationNeighbors = 0.0;
+
+  for (float i = 0.0; i < textureWidth; i++) {
+    for (float j = 0.0; j < textureWidth; j++) {
+      vec2 neighborUV = vec2(i, j) / textureWidth;
+      vec3 neighborPos = texture2D(texturePosition, neighborUV).xyz;
+      vec3 neighborVel = texture2D(textureVelocity, neighborUV).xyz;
+
+      vec3 diff = position - neighborPos;
+      float distance = length(diff);
+
+      //SEPARATION
+      if (distance > 0.0 && distance < separationDistance) {
+        separationVector += normalize(diff) / distance; //Nearer, stronger
+        separationNeighbors += 1.0;
+      }
+
+      //ALIGNMENT
+      if (distance > 0.0 && distance < alignmentDistance) {
+        averageVelocity += neighborVel;
+        alignmentNeighbors += 1.0;
+      }
+
+      //COHESION
+      if (distance > 0.0 && distance < cohesionDistance) {
+        centerOfMass += neighborPos;
+        cohesionNeighbors += 1.0;
+      }
+    }
+  }
+
+  vec3 newVelocity = velocity;
+
+  //SEPARATION
+  if (separationNeighbors > 0.0) {
+    separationVector /= separationNeighbors;
+
+    vec3 desiredDirection = normalize(velocity + separationVector * separationForce);
+    float currentSpeed = length(velocity);
+
+    vec3 separationVelocity = desiredDirection * currentSpeed;
+    newVelocity = mix(velocity, separationVelocity, separationForce * 0.5); // Plus doux
+  }
+
+  //ALIGNMENT
+  if (alignmentNeighbors > 0.0) {
+    averageVelocity /= alignmentNeighbors;
+    newVelocity = mix(newVelocity, averageVelocity, alignmentForce);
+  }
+
+  //COHESION
+  if (cohesionNeighbors > 0.0) {
+    centerOfMass /= cohesionNeighbors;
+    vec3 toCenter = centerOfMass - position;
+    vec3 cohesionVelocity = newVelocity + toCenter * cohesionForce;
+    newVelocity = mix(newVelocity, cohesionVelocity, cohesionForce);
+  }
+
+  
+  
+  
+  
+  
+  vec2 boidSeed = uv * 12345.6789; 
+
+float individualMinSpeed = minSpeed + minSpeed * ((sin(boidSeed.x) * 0.5 + 0.5) * 0.25);
+float individualMaxSpeed = maxSpeed + maxSpeed * ((cos(boidSeed.y) * 0.5 + 0.5) * 0.25); // ← 0.25 pas 100.0
+
+// Maintenant cette ligne a du sens
+individualMinSpeed = min(individualMinSpeed, individualMaxSpeed - 0.1);
+
+// Juste après le calcul de speed = length(newVelocity);
+float speed = length(newVelocity);
+
+// AJOUT DE NOISE pour casser la perfection
+vec3 noise = vec3(
+    sin(uv.x * 157.0 + uv.y * 113.0) * 0.02,
+    cos(uv.x * 241.0 + uv.y * 197.0) * 0.02,
+    sin(uv.x * 311.0 + uv.y * 283.0) * 0.02
+);
+
+// Appliquer le noise
+newVelocity += noise;
+
+// Recalculer la vitesse après noise
+speed = length(newVelocity);
+  
+  
+  
+  
+  
+  if (speed < individualMinSpeed) {
+    if (speed > 0.0) {
+      newVelocity = normalize(newVelocity) * individualMinSpeed;
+    } else {
+      newVelocity = normalize(velocity + vec3(0.1, 0.1, 0.1)) * individualMinSpeed;
+    }
+  } else if (speed > individualMaxSpeed) {
+    newVelocity = normalize(newVelocity) * individualMaxSpeed;
+  }
+
+  gl_FragColor = vec4(newVelocity, 1.0);
 }
+  
+  
+  
+  
+  
+  
+  
+  
+  
+ 
