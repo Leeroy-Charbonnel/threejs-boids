@@ -11,9 +11,9 @@ import boidVertexShader from './shaders/boidVertex.glsl?raw';
 import boidFragmentShader from './shaders/boidFragment.glsl?raw';
 
 //CONST
-const WIDTH=32;
+const WIDTH=128;
 const PARTICLES_COUNT=WIDTH*WIDTH;
-const BOUNDS=200;
+const BOUNDS=350;
 const BOUNDS_HALF=BOUNDS/2;
 
 //VARIABLES
@@ -37,17 +37,15 @@ document.body.appendChild(stats.dom);
 const gui=new GUI();
 const params={
     alignmentForce: 0.1,
-    cohesionForce: 0,
+    cohesionForce: 0.02,
     separationForce: 0.2,
     minSpeed: 0.5,
-    maxSpeed: 3.0,
+    maxSpeed: 2.0,
 
 
-    separationDistance: 1.5,
-    alignmentDistance: 4.0,
-    cohesionDistance: 12.0,
-
-
+    separationDistance: BOUNDS_HALF / 2,
+    alignmentDistance: BOUNDS_HALF / 4,
+    cohesionDistance: BOUNDS_HALF/2,
 };
 
 //SPEED
@@ -107,7 +105,7 @@ document.body.appendChild(renderer.domElement);
 const geometry=new THREE.BoxGeometry(BOUNDS,BOUNDS,BOUNDS);
 const material=new THREE.MeshBasicMaterial({ color: 0xffffff,wireframe: true });
 const cube=new THREE.Mesh(geometry,material);
-scene.add(cube);
+//scene.add(cube);
 
 
 initComputeRenderer();
@@ -218,13 +216,9 @@ function fillPositionTexture(texture: THREE.DataTexture) {
 function fillVelocityTexture(texture: THREE.DataTexture) {
     const imageData=texture.image.data;
     for(let p=0,length=imageData.length;p<length;p+=4) {
-        const x=Math.random()-0.5;
-        const y=Math.random()-0.5;
-        const z=Math.random()-0.5;
-
-        imageData[p+0]=x; //RED = X VELOCITY
-        imageData[p+1]=y; //GREEN = Y VELOCITY
-        imageData[p+2]=z; //BLUE = Z VELOCITY
+        imageData[p+0]=Math.random()-0.5; //RED = X VELOCITY
+        imageData[p+1]=Math.random()-0.5; //GREEN = Y VELOCITY
+        imageData[p+2]=Math.random()-0.5; //BLUE = Z VELOCITY
         imageData[p+3]=1;      //ALPHA = FREE
     }
 }

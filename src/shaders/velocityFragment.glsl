@@ -63,7 +63,7 @@ void main() {
     float currentSpeed = length(velocity);
 
     vec3 separationVelocity = desiredDirection * currentSpeed;
-    newVelocity = mix(velocity, separationVelocity, separationForce * 0.5); // Plus doux
+    newVelocity = mix(velocity, separationVelocity, separationForce * 0.5); 
   }
 
   //ALIGNMENT
@@ -80,39 +80,26 @@ void main() {
     newVelocity = mix(newVelocity, cohesionVelocity, cohesionForce);
   }
 
-  
-  
-  
-  
-  
-  vec2 boidSeed = uv * 12345.6789; 
+  vec2 boidSeed = uv * 12345.6789;
 
-float individualMinSpeed = minSpeed + minSpeed * ((sin(boidSeed.x) * 0.5 + 0.5) * 0.25);
-float individualMaxSpeed = maxSpeed + maxSpeed * ((cos(boidSeed.y) * 0.5 + 0.5) * 0.25); // ← 0.25 pas 100.0
+  float individualMinSpeed = minSpeed + minSpeed * ((sin(boidSeed.x) * 0.5 + 0.5) * 0.25);
+  float individualMaxSpeed = maxSpeed + maxSpeed * ((cos(boidSeed.y) * 0.5 + 0.5) * 0.25);
 
-// Maintenant cette ligne a du sens
-individualMinSpeed = min(individualMinSpeed, individualMaxSpeed - 0.1);
+  individualMinSpeed = min(individualMinSpeed, individualMaxSpeed - 0.1);
 
-// Juste après le calcul de speed = length(newVelocity);
-float speed = length(newVelocity);
+  float speed = length(newVelocity);
 
-// AJOUT DE NOISE pour casser la perfection
-vec3 noise = vec3(
+  //NOISE TO BREAK LINEARITY
+  vec3 noise = vec3(
     sin(uv.x * 157.0 + uv.y * 113.0) * 0.02,
     cos(uv.x * 241.0 + uv.y * 197.0) * 0.02,
     sin(uv.x * 311.0 + uv.y * 283.0) * 0.02
-);
+  );
 
-// Appliquer le noise
-newVelocity += noise;
+  newVelocity += noise;
 
-// Recalculer la vitesse après noise
-speed = length(newVelocity);
-  
-  
-  
-  
-  
+  speed = length(newVelocity);
+
   if (speed < individualMinSpeed) {
     if (speed > 0.0) {
       newVelocity = normalize(newVelocity) * individualMinSpeed;
@@ -125,13 +112,3 @@ speed = length(newVelocity);
 
   gl_FragColor = vec4(newVelocity, 1.0);
 }
-  
-  
-  
-  
-  
-  
-  
-  
-  
- 
