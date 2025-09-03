@@ -11,7 +11,7 @@ import boidVertexShader from './shaders/boidVertex.glsl?raw';
 import boidFragmentShader from './shaders/boidFragment.glsl?raw';
 
 //CONST
-const WIDTH=4;
+const WIDTH=10;
 const PARTICLES_COUNT=WIDTH*WIDTH;
 const BOUNDS=50;
 const BOUNDS_HALF=BOUNDS/2;
@@ -43,7 +43,7 @@ renderer.setAnimationLoop(animate);
 document.body.appendChild(renderer.domElement);
 
 const geometry=new THREE.BoxGeometry(BOUNDS,BOUNDS,BOUNDS);
-const material=new THREE.MeshBasicMaterial({ color: 0x00ff00,wireframe: true });
+const material=new THREE.MeshBasicMaterial({ color: 0xffffff,wireframe: true });
 const cube=new THREE.Mesh(geometry,material);
 scene.add(cube);
 
@@ -59,10 +59,27 @@ function createBoids() {
     coneGeometry.rotateX(Math.PI/2);
 
     const material=new THREE.ShaderMaterial({
-        uniforms: { texturePosition: { value: null },textureWidth: { value: WIDTH } },
+        uniforms: {
+            texturePosition: { value: null },
+            textureVelocity: { value: null },
+            textureWidth: { value: WIDTH }
+        },
         vertexShader: boidVertexShader,
         fragmentShader: boidFragmentShader
     });
+    const colors=new Float32Array(PARTICLES_COUNT*3);
+    const color=new THREE.Color();
+
+    for(let i=0;i<PARTICLES_COUNT;i++) {
+        const h=Math.random();
+        color.setHSL(h,0.5,0.5);
+
+        colors[i*3+0]=color.r;
+        colors[i*3+1]=color.g;
+        colors[i*3+2]=color.b;
+    }
+
+    coneGeometry.setAttribute("instanceColor",new THREE.InstancedBufferAttribute(colors,3));
 
     const instancedMesh=new THREE.InstancedMesh(coneGeometry,material,PARTICLES_COUNT);
 
@@ -151,6 +168,7 @@ function animate() {
 
     // NOUVEAU : Connecter la texture calculée aux boids
     boidsMesh.material.uniforms.texturePosition.value=gpuCompute.getCurrentRenderTarget(positionVariable).texture;
+    boidsMesh.material.uniforms.textureVelocity.value=gpuCompute.getCurrentRenderTarget(velocityVariable).texture;
 
     renderer.render(scene,camera);
     stats.end();
