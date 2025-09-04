@@ -11,9 +11,9 @@ import boidVertexShader from './shaders/boidVertex.glsl?raw';
 import boidFragmentShader from './shaders/boidFragment.glsl?raw';
 
 //CONST
-const WIDTH=128;
+const WIDTH=192;
 const PARTICLES_COUNT=WIDTH*WIDTH;
-const BOUNDS=350;
+const BOUNDS=500;
 const BOUNDS_HALF=BOUNDS/2;
 
 //VARIABLES

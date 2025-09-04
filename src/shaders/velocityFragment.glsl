@@ -23,9 +23,17 @@ void main() {
   //SEPARATION
   vec3 separationVector = vec3(0.0);
   float separationNeighbors = 0.0;
-
+  
+  float influenced = 0.0;
+  float maxDistance = separationDistance;
+    
   for (float i = 0.0; i < textureWidth; i++) {
     for (float j = 0.0; j < textureWidth; j++) {
+        
+      if (influenced > 20.0) {
+        break;
+      }
+        
       vec2 neighborUV = vec2(i, j) / textureWidth;
       vec3 neighborPos = texture2D(texturePosition, neighborUV).xyz;
       vec3 neighborVel = texture2D(textureVelocity, neighborUV).xyz;
@@ -50,6 +58,13 @@ void main() {
         centerOfMass += neighborPos;
         cohesionNeighbors += 1.0;
       }
+      
+      maxDistance = max(maxDistance, alignmentDistance);
+      maxDistance = max(maxDistance, cohesionDistance);
+      if (distance > 0.0 && distance < maxDistance) {
+        influenced = influenced + 1.0;
+      }
+      
     }
   }
 
@@ -91,9 +106,9 @@ void main() {
 
   //NOISE TO BREAK LINEARITY
   vec3 noise = vec3(
-    sin(uv.x * 157.0 + uv.y * 113.0) * 0.02,
-    cos(uv.x * 241.0 + uv.y * 197.0) * 0.02,
-    sin(uv.x * 311.0 + uv.y * 283.0) * 0.02
+    sin(uv.x * 157.0 + uv.y * 113.0) * 0.03,
+    cos(uv.x * 241.0 + uv.y * 197.0) * 0.03,
+    sin(uv.x * 311.0 + uv.y * 283.0) * 0.03
   );
 
   newVelocity += noise;
