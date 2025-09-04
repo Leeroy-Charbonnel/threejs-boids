@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(/C:\\Perso\\threejs-boids\\src/**)",
+      "Read(/C:\\Perso\\threejs-boids\\src\\shaders/**)",
+      "Read(/C:\\Perso\\threejs-boids\\public/**)",
+      "Read(/C:\\Perso\\threejs-boids\\public\\models/**)",
+      "Read(/C:\\Perso\\threejs-boids\\src/**)",
+      "Read(/C:\\Perso\\threejs-boids\\src\\shaders/**)",
+      "Read(/C:\\Perso\\threejs-boids\\src/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
