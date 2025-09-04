@@ -40,28 +40,30 @@ void main() {
 
       vec3 diff = position - neighborPos;
       float distance = length(diff);
+      
+      if ( distance < 0.01 ) continue;
 
       //SEPARATION
-      if (distance > 0.0 && distance < separationDistance) {
+      if (distance < separationDistance) {
         separationVector += normalize(diff) / distance; //Nearer, stronger
         separationNeighbors += 1.0;
       }
 
       //ALIGNMENT
-      if (distance > 0.0 && distance < alignmentDistance) {
+      if (distance < alignmentDistance) {
         averageVelocity += neighborVel;
         alignmentNeighbors += 1.0;
       }
 
       //COHESION
-      if (distance > 0.0 && distance < cohesionDistance) {
+      if (distance < cohesionDistance) {
         centerOfMass += neighborPos;
         cohesionNeighbors += 1.0;
       }
       
       maxDistance = max(maxDistance, alignmentDistance);
       maxDistance = max(maxDistance, cohesionDistance);
-      if (distance > 0.0 && distance < maxDistance) {
+      if (distance < maxDistance) {
         influenced = influenced + 1.0;
       }
       
