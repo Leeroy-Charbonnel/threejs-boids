@@ -58,8 +58,8 @@ const params={
     cohesionDistance: BOUNDS_HALF/2,
     
     // Paramètres d'animation des ailes
-    wingSpeed: 20.0,
-    wingAmplitude: 0.4,
+    wingSpeed: 30.0,
+    wingAmplitude: 0.8,
     
     // Taille des boids
     scale: 1.0,
@@ -174,13 +174,7 @@ function getCurrentModelType(): number {
     return 1.0; // default Cone
 }
 
-// Fonction pour obtenir le nom du modèle actuel
-function getCurrentModelName(): string {
-    if (currentGeometry === sphereGeometry) return "SPHERE";
-    if (currentGeometry === coneGeometry) return "CONE";
-    if (currentGeometry === butterflyGeometry) return "BUTTERFLY";
-    return "CONE"; // default
-}
+
 
 // Fonction pour mettre à jour le nombre de particules
 function updateParticleCount(newCount: number) {
