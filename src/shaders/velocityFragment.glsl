@@ -8,6 +8,7 @@ uniform float separationForce;
 uniform float textureWidth;
 uniform float minSpeed;
 uniform float maxSpeed;
+uniform float boundsHalf;
 
 void main() {
   vec2 uv = gl_FragCoord.xy / resolution.xy;
@@ -99,8 +100,8 @@ void main() {
 
   vec2 boidSeed = uv * 12345.6789;
 
-  float individualMinSpeed = minSpeed + minSpeed * ((sin(boidSeed.x) * 0.5 + 0.5) * 0.25);
-  float individualMaxSpeed = maxSpeed + maxSpeed * ((cos(boidSeed.y) * 0.5 + 0.5) * 0.25);
+  float individualMinSpeed = minSpeed + minSpeed * ((sin(boidSeed.x) * 0.5 + 0.5) * 0.6);
+  float individualMaxSpeed = maxSpeed + maxSpeed * ((cos(boidSeed.y) * 0.5 + 0.5) * 0.8);
 
   individualMinSpeed = min(individualMinSpeed, individualMaxSpeed - 0.1);
 
@@ -114,6 +115,17 @@ void main() {
   );
 
   newVelocity += noise;
+
+  //FORCE TOWARDS CENTER
+  float distanceFromCenter = length(position);
+  
+  if (distanceFromCenter > 0.0) {
+    vec3 toCenter = -normalize(position);
+    float centerForce = distanceFromCenter / boundsHalf;
+    centerForce = centerForce * 0.012; 
+    
+    newVelocity += toCenter * centerForce;
+  }
 
   speed = length(newVelocity);
 
