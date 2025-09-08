@@ -9,11 +9,18 @@ uniform float textureWidth;
 uniform float minSpeed;
 uniform float maxSpeed;
 uniform float boundsHalf;
+uniform float groupCount;
 
 void main() {
   vec2 uv = gl_FragCoord.xy / resolution.xy;
   vec3 velocity = texture2D(textureVelocity, uv).xyz;
   vec3 position = texture2D(texturePosition, uv).xyz;
+  
+  // Calcul du groupe de ce boid
+  float totalBoids = textureWidth * textureWidth;
+  float boidsPerGroup = totalBoids / groupCount;
+  float boidIndex = gl_FragCoord.x + gl_FragCoord.y * textureWidth;
+  float currentGroup = floor(boidIndex / boidsPerGroup);
 
   //ALIGNMENT
   vec3 averageVelocity = vec3(0.0);
@@ -27,48 +34,61 @@ void main() {
   
   float influenced = 0.0;
   float maxDistance = separationDistance;
-    
-  for (float i = 0.0; i < textureWidth; i++) {
-    for (float j = 0.0; j < textureWidth; j++) {
-        
-      if (influenced > 20.0) {
-        break;
-      }
-        
-      vec2 neighborUV = vec2(i, j) / textureWidth;
-      vec3 neighborPos = texture2D(texturePosition, neighborUV).xyz;
-      vec3 neighborVel = texture2D(textureVelocity, neighborUV).xyz;
 
-      vec3 diff = position - neighborPos;
-      float distance = length(diff);
-      
-      if ( distance < 0.01 ) continue;
-
-      //SEPARATION
-      if (distance < separationDistance) {
-        separationVector += normalize(diff) / distance; //Nearer, stronger
-        separationNeighbors += 1.0;
-      }
-
-      //ALIGNMENT
-      if (distance < alignmentDistance) {
-        averageVelocity += neighborVel;
-        alignmentNeighbors += 1.0;
-      }
-
-      //COHESION
-      if (distance < cohesionDistance) {
-        centerOfMass += neighborPos;
-        cohesionNeighbors += 1.0;
-      }
-      
-      maxDistance = max(maxDistance, alignmentDistance);
-      maxDistance = max(maxDistance, cohesionDistance);
-      if (distance < maxDistance) {
-        influenced = influenced + 1.0;
-      }
-      
+  // Calcul des bornes du groupe actuel pour l'alignement/cohésion
+  float groupStartIndex = currentGroup * boidsPerGroup;
+  float groupEndIndex = min((currentGroup + 1.0) * boidsPerGroup, totalBoids);
+  
+  // Parcourir seulement les boids du même groupe pour alignement/cohésion
+  for (float idx = groupStartIndex; idx < groupEndIndex; idx++) {
+    if (influenced > 20.0) {
+      break;
     }
+    
+    float i = mod(idx, textureWidth);
+    float j = floor(idx / textureWidth);
+    vec2 neighborUV = vec2(i, j) / textureWidth;
+    vec3 neighborPos = texture2D(texturePosition, neighborUV).xyz;
+    vec3 neighborVel = texture2D(textureVelocity, neighborUV).xyz;
+
+    vec3 diff = position - neighborPos;
+    float distance = length(diff);
+    
+    if (distance < 0.01) continue;
+
+    //ALIGNMENT
+    if (distance < alignmentDistance) {
+      averageVelocity += neighborVel;
+      alignmentNeighbors += 1.0;
+    }
+
+    //COHESION
+    if (distance < cohesionDistance) {
+      centerOfMass += neighborPos;
+      cohesionNeighbors += 1.0;
+    }
+    
+    if (distance < max(alignmentDistance, cohesionDistance)) {
+      influenced += 1.0;
+    }
+  }
+
+  // Séparation : échantillonnage aléatoire pour éviter les patterns rigides
+  float step = max(1.0, floor(totalBoids / 128.0)); // Plus d'échantillons
+  float randomOffset = fract(sin(boidIndex * 12.9898) * 43758.5453) * step;
+  for (float idx = randomOffset; idx < totalBoids; idx += step) {
+    float i = mod(idx, textureWidth);
+    float j = floor(idx / textureWidth);
+    vec2 neighborUV = vec2(i, j) / textureWidth;
+    vec3 neighborPos = texture2D(texturePosition, neighborUV).xyz;
+
+    vec3 diff = position - neighborPos;
+    float distance = length(diff);
+    
+    if (distance < 0.01 || distance >= separationDistance) continue;
+
+    separationVector += normalize(diff) / distance;
+    separationNeighbors += 1.0;
   }
 
   vec3 newVelocity = velocity;
@@ -116,15 +136,22 @@ void main() {
 
   newVelocity += noise;
 
-  //FORCE TOWARDS CENTER
+  //FORCE TOWARDS CENTER (très douce, seulement aux limites)
   float distanceFromCenter = length(position);
   
-  if (distanceFromCenter > 0.0) {
+  if (distanceFromCenter > boundsHalf * 0.8) { // Activer seulement très proche des bords
     vec3 toCenter = -normalize(position);
-    float centerForce = distanceFromCenter / boundsHalf;
-    centerForce = centerForce * 0.012; 
+    float centerForce = pow((distanceFromCenter - boundsHalf * 0.8) / (boundsHalf * 0.2), 3.0);
+    centerForce = centerForce * 0.004; // Force encore plus réduite
     
-    newVelocity += toCenter * centerForce;
+    // Ajouter une variation aléatoire pour éviter les patterns rigides
+    vec3 randomVariation = vec3(
+      sin(boidIndex * 0.12 + position.x * 0.01),
+      cos(boidIndex * 0.15 + position.y * 0.01),
+      sin(boidIndex * 0.18 + position.z * 0.01)
+    ) * 0.003;
+    
+    newVelocity += toCenter * centerForce + randomVariation;
   }
 
   speed = length(newVelocity);

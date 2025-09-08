@@ -18,7 +18,7 @@ import { AnimationMixer,AnimationClip } from 'three';
 //CONST
 let WIDTH=64;
 let PARTICLES_COUNT=WIDTH*WIDTH;
-const BOUNDS=300;
+const BOUNDS=500;
 const BOUNDS_HALF=BOUNDS/2;
 
 //VARIABLES
@@ -38,6 +38,7 @@ let currentGeometry: THREE.BufferGeometry;
 let butterflyAnimations: AnimationClip[]=[];
 let animationMixers: AnimationMixer[]=[];
 let clock=new THREE.Clock();
+let skyMesh: THREE.Mesh;
 
 
 const scene=new THREE.Scene();
@@ -76,11 +77,16 @@ const params={
     particleCount: 4096, // 64x64 par défaut
 
     // Sélection du modèle
-    model: 'butterfly', // 'sphere', 'cone', 'butterfly'
+    model: 'fish', // 'sphere', 'cone', 'butterfly', 'fish', 'jellyfish'
 
-    // Couleurs
-    useRandomColors: true,
-    baseColor: '#ff6b6b'
+    // Groupes
+    groupCount: 1,
+    groupColors: ['#ff6b6b', '#4ecdc4', '#45b7d1', '#f9ca24', '#f0932b', '#eb4d4b', '#6c5ce7', '#a29bfe'],
+
+    // Sky sphere gradient
+    skyColorTop: '#b3d9f2',    // Bleu clair (0.7, 0.85, 0.95)
+    skyColorBottom: '#80b3d9', // Bleu plus clair (0.5, 0.7, 0.85)
+
 };
 
 //SPEED
@@ -152,22 +158,77 @@ modelFolder.add(params,'particleCount',[1024,2048,4096,8192,16384])
         updateParticleCount(value);
     });
 
-// COULEURS
-const colorFolder=gui.addFolder('Couleurs');
-colorFolder.add(params,'useRandomColors')
-    .name('Couleurs aléatoires')
-    .onChange((value: boolean) => {
-        updateColorSystem();
-    });
-colorFolder.addColor(params,'baseColor')
-    .name('Couleur de base')
-    .onChange((value: string) => {
-        if(!params.useRandomColors) {
-            updateColorSystem();
+// GROUPES
+const groupFolder=gui.addFolder('Groupes');
+groupFolder.add(params,'groupCount',1,8,1)
+    .name('Nombre de groupes')
+    .onChange((value: number) => {
+        if(velocityUniforms) {
+            velocityUniforms['groupCount'].value = value;
         }
+        updateColorSystem();
+        updateGroupControls();
     });
-colorFolder.add({ regenerateColors: () => updateColorSystem() }, 'regenerateColors')
-    .name('Régénérer couleurs');
+
+// Variables pour les contrôles de couleurs de groupe
+let groupColorControls: any[] = [];
+
+function updateGroupControls() {
+    // Supprimer les anciens contrôles
+    groupColorControls.forEach(control => {
+        control.destroy();
+    });
+    groupColorControls = [];
+
+    // Ajouter les nouveaux contrôles pour chaque groupe
+    for(let i = 0; i < params.groupCount; i++) {
+        const control = groupFolder.addColor(params.groupColors, i.toString())
+            .name(`Couleur groupe ${i+1}`)
+            .onChange(() => {
+                updateColorSystem();
+            });
+        groupColorControls.push(control);
+    }
+}
+
+// Ajouter le bouton régénérer couleurs dans le dossier groupes
+groupFolder.add({ 
+    regenerateColors: () => {
+        // Générer des couleurs aléatoires pour chaque groupe
+        for(let i = 0; i < params.groupCount; i++) {
+            const hue = Math.random();
+            const saturation = 0.6 + Math.random() * 0.4;
+            const lightness = 0.5 + Math.random() * 0.3;
+            const color = new THREE.Color().setHSL(hue, saturation, lightness);
+            params.groupColors[i] = '#' + color.getHexString();
+        }
+        updateColorSystem();
+        updateGroupControls(); // Rafraîchir l'affichage des contrôles
+    }
+}, 'regenerateColors').name('Régénérer couleurs aléatoires');
+
+// SKY SPHERE
+const skyFolder = gui.addFolder('Sky Sphere');
+skyFolder.addColor(params, 'skyColorTop')
+    .name('Couleur haut')
+    .onChange((value: string) => {
+        updateSkyColors();
+    });
+skyFolder.addColor(params, 'skyColorBottom')
+    .name('Couleur bas')
+    .onChange((value: string) => {
+        updateSkyColors();
+    });
+
+function updateSkyColors() {
+    if (skyMesh && skyMesh.material && skyMesh.material.uniforms) {
+        const topColor = new THREE.Color(params.skyColorTop);
+        const bottomColor = new THREE.Color(params.skyColorBottom);
+        
+        skyMesh.material.uniforms.topColor.value = topColor;
+        skyMesh.material.uniforms.bottomColor.value = bottomColor;
+    }
+}
 
 
 
@@ -263,28 +324,21 @@ function updateColorSystem() {
     if(!boidsMesh) return;
 
     const colors=new Float32Array(PARTICLES_COUNT*3);
+    const groupIds=new Float32Array(PARTICLES_COUNT);
     const color=new THREE.Color();
+    
+    const boidsPerGroup = Math.floor(PARTICLES_COUNT / params.groupCount);
 
-    if(params.useRandomColors) {
-        const hueRange = 0.25; //25% of the color wheel
-        const hueStart = Math.random() * (1.0 - hueRange);
+    for(let groupIndex = 0; groupIndex < params.groupCount; groupIndex++) {
+        const startIndex = groupIndex * boidsPerGroup;
+        const endIndex = (groupIndex === params.groupCount - 1) ? PARTICLES_COUNT : (groupIndex + 1) * boidsPerGroup;
 
-        for(let i=0; i<PARTICLES_COUNT; i++) {
-            const h = hueStart + Math.random() * hueRange;
-            const s = 0.5 + Math.random() * 0.2;
-            const l = 0.7 + Math.random() * 0.2;
-            color.setHSL(h, s, l);
-
-            colors[i*3+0] = color.r;
-            colors[i*3+1] = color.g;
-            colors[i*3+2] = color.b;
-        }
-    } else {
-        const baseColor=new THREE.Color(params.baseColor);
+        // Couleur fixe par groupe avec variations
+        const groupColor = new THREE.Color(params.groupColors[groupIndex] || '#ff6b6b');
         const hsl={ h: 0,s: 0,l: 0 };
-        baseColor.getHSL(hsl);
+        groupColor.getHSL(hsl);
 
-        for(let i=0;i<PARTICLES_COUNT;i++) {
+        for(let i = startIndex; i < endIndex; i++) {
             const lVariance=(Math.random()-0.25)*0.15;
             const newL=Math.max(0,Math.min(1,hsl.l+lVariance));
 
@@ -298,12 +352,15 @@ function updateColorSystem() {
             colors[i*3+0]=color.r;
             colors[i*3+1]=color.g;
             colors[i*3+2]=color.b;
+            groupIds[i] = groupIndex;
         }
     }
 
     const geometry=boidsMesh.geometry;
     geometry.setAttribute("instanceColor",new THREE.InstancedBufferAttribute(colors,3));
+    geometry.setAttribute("instanceGroupId",new THREE.InstancedBufferAttribute(groupIds,1));
     geometry.attributes.instanceColor.needsUpdate=true;
+    geometry.attributes.instanceGroupId.needsUpdate=true;
 }
 
 function createBoids() {
@@ -385,6 +442,7 @@ function initComputeRenderer() {
     velocityUniforms['texturePosition']={ value: null };
     velocityUniforms['textureWidth']={ value: WIDTH };
     velocityUniforms['boundsHalf']={ value: BOUNDS_HALF };
+    velocityUniforms['groupCount']={ value: params.groupCount };
 
 
     const error=gpuCompute.init();
@@ -675,14 +733,18 @@ function animate() {
 
 
 function createSkySphere() {
-    const skyGeometry=new THREE.SphereGeometry(BOUNDS*4,32,32);
+    const skyGeometry=new THREE.SphereGeometry(BOUNDS*2,32,32);
     const skyMaterial=new THREE.ShaderMaterial({
+        uniforms: {
+            topColor: { value: new THREE.Color(params.skyColorTop) },
+            bottomColor: { value: new THREE.Color(params.skyColorBottom) }
+        },
         vertexShader: skyVertexShader,
         fragmentShader: skyFragmentShader,
         side: THREE.BackSide
     });
 
-    const skyMesh=new THREE.Mesh(skyGeometry,skyMaterial);
+    skyMesh=new THREE.Mesh(skyGeometry,skyMaterial);
     scene.add(skyMesh);
     return skyMesh;
 }
@@ -702,7 +764,7 @@ async function init() {
             loadJellyfishModel()
         ]);
         console.log('Modèles GLB chargés avec succès');
-        currentGeometry=jellyfishGeometry; // Utiliser la méduse par défaut
+        currentGeometry=fishGeometry; // Utiliser le poisson par défaut
 
     } catch(error) {
         console.error('Erreur lors du chargement des modèles:',error);
@@ -715,10 +777,21 @@ async function init() {
 
     initComputeRenderer();
     boidsMesh=createBoids();
+    
+    // Générer des couleurs aléatoires au chargement
+    for(let i = 0; i < params.groupCount; i++) {
+        const hue = Math.random();
+        const saturation = 0.6 + Math.random() * 0.4;
+        const lightness = 0.5 + Math.random() * 0.3;
+        const color = new THREE.Color().setHSL(hue, saturation, lightness);
+        params.groupColors[i] = '#' + color.getHexString();
+    }
+    
     updateColorSystem();
+    updateGroupControls(); // Initialiser les contrôles de groupe
     console.log('Boids créés avec succès');
 
-    camera.position.z=BOUNDS_HALF*4;
+    camera.position.z=BOUNDS;
     controls.update();
 
     // Démarrer l'animation
