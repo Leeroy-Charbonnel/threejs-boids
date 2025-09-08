@@ -15,39 +15,32 @@ void main() {
   vec2 uv = gl_FragCoord.xy / resolution.xy;
   vec3 velocity = texture2D(textureVelocity, uv).xyz;
   vec3 position = texture2D(texturePosition, uv).xyz;
-  
-  // Calcul du groupe de ce boid
+
+  //GROUP
   float totalBoids = textureWidth * textureWidth;
   float boidsPerGroup = totalBoids / groupCount;
   float boidIndex = gl_FragCoord.x + gl_FragCoord.y * textureWidth;
   float currentGroup = floor(boidIndex / boidsPerGroup);
 
-  //ALIGNMENT
   vec3 averageVelocity = vec3(0.0);
   float alignmentNeighbors = 0.0;
-  //COHESION
   vec3 centerOfMass = vec3(0.0);
   float cohesionNeighbors = 0.0;
-  //SEPARATION
   vec3 separationVector = vec3(0.0);
   float separationNeighbors = 0.0;
   
   float influenced = 0.0;
-  float maxDistance = separationDistance;
 
-  // Calcul des bornes du groupe actuel pour l'alignement/cohésion
   float groupStartIndex = currentGroup * boidsPerGroup;
-  float groupEndIndex = min((currentGroup + 1.0) * boidsPerGroup, totalBoids);
-  
-  // Parcourir seulement les boids du même groupe pour alignement/cohésion
-  for (float idx = groupStartIndex; idx < groupEndIndex; idx++) {
+  float groupEndIndex = min((currentGroup + 1.0) * boidsPerGroup, totalBoids - 1.0);
+  for (float idx = groupStartIndex; idx <= groupEndIndex; idx += 1.0) {
     if (influenced > 20.0) {
       break;
     }
     
     float i = mod(idx, textureWidth);
     float j = floor(idx / textureWidth);
-    vec2 neighborUV = vec2(i, j) / textureWidth;
+    vec2 neighborUV = vec2(i + 0.5, j + 0.5) / textureWidth;
     vec3 neighborPos = texture2D(texturePosition, neighborUV).xyz;
     vec3 neighborVel = texture2D(textureVelocity, neighborUV).xyz;
 
@@ -73,22 +66,27 @@ void main() {
     }
   }
 
-  // Séparation : échantillonnage aléatoire pour éviter les patterns rigides
-  float step = max(1.0, floor(totalBoids / 128.0)); // Plus d'échantillons
-  float randomOffset = fract(sin(boidIndex * 12.9898) * 43758.5453) * step;
-  for (float idx = randomOffset; idx < totalBoids; idx += step) {
-    float i = mod(idx, textureWidth);
-    float j = floor(idx / textureWidth);
-    vec2 neighborUV = vec2(i, j) / textureWidth;
-    vec3 neighborPos = texture2D(texturePosition, neighborUV).xyz;
+  influenced = 0.0;
 
-    vec3 diff = position - neighborPos;
-    float distance = length(diff);
+  //SEPARATION
+  for (float j = 0.0; j < textureWidth; j += 1.0) {
+    for (float i = 0.0; i < textureWidth; i += 1.0) {
+      vec2 neighborUV = vec2(i + 0.5, j + 0.5) / textureWidth;
+      vec3 neighborPos = texture2D(texturePosition, neighborUV).xyz;
+
+      if (influenced > 50.0) {
+        break;
+      }
+      
+      vec3 diff = position - neighborPos;
+      float distance = length(diff);
     
-    if (distance < 0.01 || distance >= separationDistance) continue;
+      if (distance < 0.01 || distance >= separationDistance) continue;
 
-    separationVector += normalize(diff) / distance;
-    separationNeighbors += 1.0;
+      influenced += 1.0;
+      separationVector += normalize(diff) / distance;
+      separationNeighbors += 1.0;
+    }
   }
 
   vec3 newVelocity = velocity;
@@ -129,31 +127,19 @@ void main() {
 
   //NOISE TO BREAK LINEARITY
   vec3 noise = vec3(
-    sin(uv.x * 157.0 + uv.y * 113.0) * 0.03,
-    cos(uv.x * 241.0 + uv.y * 197.0) * 0.03,
-    sin(uv.x * 311.0 + uv.y * 283.0) * 0.03
+    sin(position.x * 0.1 + position.y * 0.13) * 0.02,
+    cos(position.y * 0.11 + position.z * 0.17) * 0.02,
+    sin(position.z * 0.12 + position.x * 0.19) * 0.02
   );
 
   newVelocity += noise;
-
-  //FORCE TOWARDS CENTER (très douce, seulement aux limites)
-  float distanceFromCenter = length(position);
   
-  if (distanceFromCenter > boundsHalf * 0.8) { // Activer seulement très proche des bords
+  //PERMANENT CENTER ATTRACTION
+  float distanceFromCenter = length(position);
     vec3 toCenter = -normalize(position);
-    float centerForce = pow((distanceFromCenter - boundsHalf * 0.8) / (boundsHalf * 0.2), 3.0);
-    centerForce = centerForce * 0.004; // Force encore plus réduite
-    
-    // Ajouter une variation aléatoire pour éviter les patterns rigides
-    vec3 randomVariation = vec3(
-      sin(boidIndex * 0.12 + position.x * 0.01),
-      cos(boidIndex * 0.15 + position.y * 0.01),
-      sin(boidIndex * 0.18 + position.z * 0.01)
-    ) * 0.003;
-    
-    newVelocity += toCenter * centerForce + randomVariation;
-  }
-
+    float centerForce = (distanceFromCenter / (boundsHalf * 2.0))  * 0.008;
+    newVelocity += toCenter * centerForce;
+  
   speed = length(newVelocity);
 
   if (speed < individualMinSpeed) {
@@ -166,5 +152,6 @@ void main() {
     newVelocity = normalize(newVelocity) * individualMaxSpeed;
   }
 
-  gl_FragColor = vec4(newVelocity, 1.0);
+  
+  gl_FragColor = vec4(newVelocity, 0.0);
 }
