@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Perso/threejs-boids/src/shaders/**)",
+      "Read(//c/Perso/threejs-boids/src/**)",
+      "Read(//c/Perso/threejs-boids/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

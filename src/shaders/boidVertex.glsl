@@ -18,6 +18,7 @@ attribute vec3 instanceColor;
 void main() {
     float instanceId = float(gl_InstanceID);
 
+    // Limit time jumps to prevent animation breaks when switching windows
     float u = mod(instanceId, textureWidth) / textureWidth;
     float v = floor(instanceId / textureWidth) / textureWidth;
     vec2 uv = vec2(u, v);
