@@ -8,6 +8,21 @@
   </head>
   <body>
     <div id="app"></div>
+    <div id="preset-panel" class="preset-panel">
+      <div class="preset-header">Presets</div>
+      <div class="preset-section">
+        <div class="preset-section-title">Predefined</div>
+        <div id="predefined-presets" class="preset-list"></div>
+      </div>
+      <div class="preset-section">
+        <div class="preset-section-title">Custom</div>
+        <div id="custom-presets" class="preset-list"></div>
+        <div class="preset-save">
+          <input type="text" id="preset-name-input" placeholder="Save current config. as ..." class="preset-input">
+          <button id="save-preset-btn" class="preset-btn">Save</button>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

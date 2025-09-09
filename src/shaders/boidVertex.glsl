@@ -4,10 +4,13 @@ uniform float textureWidth;
 uniform float time;
 uniform float animationSpeed;
 uniform float scale;
-uniform float modelType; // 0.0=Sphere, 1.0=Cone, 2.0=Butterfly
+uniform float modelType;
+uniform float skinType;
 
 varying vec3 vColor;
 varying float vModelType;
+varying float vSkinType;
+varying vec3 vWorldPosition;
 varying vec3 vNormal;
 varying vec3 vLocalPosition;
 varying vec3 vOriginalPosition;
@@ -18,7 +21,7 @@ attribute vec3 instanceColor;
 void main() {
     float instanceId = float(gl_InstanceID);
 
-    // Limit time jumps to prevent animation breaks when switching windows
+    //Limit time jumps to prevent animation breaks when switching windows
     float u = mod(instanceId, textureWidth) / textureWidth;
     float v = floor(instanceId / textureWidth) / textureWidth;
     vec2 uv = vec2(u, v);
@@ -36,22 +39,22 @@ void main() {
     if (modelType == 2.0) {
         float baseWingPhase = time * animationSpeed * 0.5 + instancePhaseOffset;
         
-        // Body bobbing motion
+        //Body bobbing motion
         float mainFlap = sin(baseWingPhase) * 0.35;
         animatedPosition.y += mainFlap;
         
-        // Wing flapping - detect wings based on X position (left/right)
+        //Wing flapping - detect wings based on X position (left/right)
         float distanceFromCenter = abs(animatedPosition.x) / adjustedScale;
         
-        if (distanceFromCenter > 0.3) { // Only animate wing parts
+        if (distanceFromCenter > 0.3) { //Only animate wing parts
             float wingFlap = sin(baseWingPhase * 1.8) * 0.5;
             
-            // Wings go up and down
+            //Wings go up and down
             animatedPosition.y += wingFlap * distanceFromCenter * 0.8;
             
-            // Wings rotate slightly - reduced distortion
+            //Wings rotate slightly - reduced distortion
             float wingRotation = wingFlap * 0.2;
-            if (animatedPosition.x < 0.0) wingRotation = -wingRotation; // Mirror for left wing
+            if (animatedPosition.x < 0.0) wingRotation = -wingRotation; //Mirror for left wing
             
             float cosRot = cos(wingRotation);
             float sinRot = sin(wingRotation);
@@ -61,7 +64,7 @@ void main() {
             animatedPosition.z = tempPos.y * sinRot + tempPos.z * cosRot;
         }
         
-        // Side-to-side flutter for whole body
+        //Side-to-side flutter for whole body
         float flutter = sin(baseWingPhase * 1.3) * 0.1;
         animatedPosition.x += flutter;
     }
@@ -114,15 +117,15 @@ void main() {
 
         animatedPosition.x += wave * adjustedScale;
 
-        //BOBBING
-        float bobAmplitude = 5.0 * adjustedScale; // ajuste l’intensité du bobbing
+        //BOB
+        float bobAmplitude = 5.0 * adjustedScale;
         float bob = sin(wavePhase) * bobAmplitude;
         animatedPosition.z += bob;
     }
 
 
 
-    //ORIENTATION
+    //ORIENT
     vec3 worldPos;
     if (modelType == 0.0) {
         worldPos = animatedPosition + boidPosition;
@@ -142,6 +145,8 @@ void main() {
 
     vColor = instanceColor;
     vModelType = modelType;
+    vSkinType = skinType;
+    vWorldPosition = worldPos;
     vNormal = normalize(normalMatrix * normal);
     vLocalPosition = animatedPosition;
     vOriginalPosition = position;

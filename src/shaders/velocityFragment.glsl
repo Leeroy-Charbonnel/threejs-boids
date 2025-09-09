@@ -6,8 +6,7 @@ uniform float separationDistance;
 uniform float separationForce;
 
 uniform float textureWidth;
-uniform float minSpeed;
-uniform float maxSpeed;
+uniform float speed;
 uniform float boundsHalf;
 uniform float groupCount;
 
@@ -118,14 +117,11 @@ void main() {
 
   vec2 boidSeed = uv * 12345.6789;
 
-  float individualMinSpeed = minSpeed + minSpeed * ((sin(boidSeed.x) * 0.5 + 0.5) * 0.6);
-  float individualMaxSpeed = maxSpeed + maxSpeed * ((cos(boidSeed.y) * 0.5 + 0.5) * 0.8);
-
-  individualMinSpeed = min(individualMinSpeed, individualMaxSpeed - 0.1);
+  float individualSpeed = speed + speed * ((sin(boidSeed.x) * 0.5 + 0.5) * 0.6);
 
   float speed = length(newVelocity);
 
-  //NOISE TO BREAK LINEARITY
+  //NOISE
   vec3 noise = vec3(
     sin(position.x * 0.1 + position.y * 0.13) * 0.02,
     cos(position.y * 0.11 + position.z * 0.17) * 0.02,
@@ -134,22 +130,20 @@ void main() {
 
   newVelocity += noise;
   
-  //PERMANENT CENTER ATTRACTION
+  //CENTER FORCE
   float distanceFromCenter = length(position);
-    vec3 toCenter = -normalize(position);
-    float centerForce = (distanceFromCenter / (boundsHalf * 2.0))  * 0.008;
-    newVelocity += toCenter * centerForce;
+  vec3 toCenter = -normalize(position);
+  float currentSpeed = length(newVelocity);
+  float centerForce = (distanceFromCenter / (boundsHalf * 2.0)) * 0.007 * currentSpeed ;
+  newVelocity += toCenter * centerForce;
   
   speed = length(newVelocity);
 
-  if (speed < individualMinSpeed) {
-    if (speed > 0.0) {
-      newVelocity = normalize(newVelocity) * individualMinSpeed;
-    } else {
-      newVelocity = normalize(velocity + vec3(0.1, 0.1, 0.1)) * individualMinSpeed;
-    }
-  } else if (speed > individualMaxSpeed) {
-    newVelocity = normalize(newVelocity) * individualMaxSpeed;
+  //NORMALIZE SPEED
+  if (speed > 0.0) {
+    newVelocity = normalize(newVelocity) * individualSpeed;
+  } else {
+    newVelocity = normalize(velocity + vec3(0.1, 0.1, 0.1)) * individualSpeed;
   }
 
   
