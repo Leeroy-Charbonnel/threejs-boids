@@ -101,24 +101,6 @@ void main() {
         animatedPosition.x += smoothWave * adjustedScale;
     }
 
-    //LONGFISH ANIMATION
-    if (modelType == 5.0) {
-        float wavePhase = time * animationSpeed * 1.2 + instancePhaseOffset;
-
-        float normalizedZ = (-animatedPosition.z) / adjustedScale;
-        normalizedZ = clamp(normalizedZ, 0.0, 1.0);
-
-        float amplitude = normalizedZ * normalizedZ;
-
-        float strength = 1.5;
-        float smoothness = 0.4;
-        float waveInput = wavePhase + (animatedPosition.z / adjustedScale) * smoothness;
-
-        float squiggle = sin(waveInput) * (amplitude * strength);
-        float secondarySquiggle = sin(waveInput * 2.1) * (amplitude * strength * 0.3);
-
-        animatedPosition.x += (squiggle + secondarySquiggle) * adjustedScale;
-    }
     
     
     //JELLYFISH ANIMATION

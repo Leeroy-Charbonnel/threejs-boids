@@ -14,10 +14,6 @@ uniform float time;
 void main() {
   vec3 finalColor = vColor;
 
-  //DARKEN BASE COLOR FOR PULSE EFFECT
-  if (vSkinType == 2.0) {
-    finalColor = finalColor * 0.6; // Darker base for better contrast
-  }
 
   //SKIN PATTERNS
   if (vSkinType == 0.0) { //SPOT pattern
@@ -57,43 +53,6 @@ void main() {
 
     //MIX SPOTS WITH CLAMPED INTENSITY
     finalColor = mix(finalColor, spotColor, totalSpotIntensity * 0.4);
-  } else if (vSkinType == 2.0) { //GROUP WAVE PULSE pattern
-    //WAVE PROPAGATION BY GROUP
-    float groupPhase = vGroupId * 2.0; // Different phase for each group
-    float waveSpeed = 25.0; // Slightly faster waves
-    float waveTime = time * waveSpeed + groupPhase;
-
-    //GROUP-SPECIFIC WAVE ORIGIN - each group has its own wave starting point
-    vec3 groupWaveOrigin = vec3(
-      sin(vGroupId * 3.7) * 50.0,  // X offset based on group
-      cos(vGroupId * 2.1) * 50.0,  // Y offset based on group
-      sin(vGroupId * 4.3) * 30.0   // Z offset based on group
-    );
-
-    //DISTANCE FROM GROUP WAVE ORIGIN
-    float distanceFromOrigin = length(vWorldPosition - groupWaveOrigin);
-
-    //MAIN WAVE - travels outward from group-specific origin
-    float mainWave = sin((distanceFromOrigin - waveTime) * 0.04) * 0.5 + 0.5;
-
-    //SECONDARY WAVE - creates broader ripple effect from same origin
-    float rippleWave = sin((distanceFromOrigin - waveTime * 0.9) * 0.06) * 0.3 + 0.7;
-
-    //GROUP SYNCHRONIZATION WAVE - slow wave that synchronizes the group
-    float syncWave = sin(waveTime * 0.2 + vGroupId * 2.5) * 0.4 + 0.6;
-
-    //INDIVIDUAL VARIATION - slight offset per boid to avoid perfect sync
-    float individualOffset = sin(vInstanceId * 7.89 + time * 1.2) * 0.2;
-
-    //COMBINE ALL WAVES
-    float totalWave = mainWave * rippleWave * syncWave + individualOffset;
-    totalWave = clamp(totalWave, 0.0, 1.0);
-
-    //ENHANCED COLOR WITH WAVE
-    vec3 waveColor = finalColor * (1.0 + totalWave * 1.5);
-
-    //MIX WAVE PULSE
-    finalColor = mix(finalColor, waveColor, totalWave * 0.9);
   } else if (vSkinType == 3.0) {
 
     //SHIMMER
