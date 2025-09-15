@@ -15,8 +15,12 @@ varying vec3 vNormal;
 varying vec3 vLocalPosition;
 varying vec3 vOriginalPosition;
 varying float vInstanceId;
+varying float vTurnDirection;
 
 attribute vec3 instanceColor;
+attribute float instanceGroupId;
+
+varying float vGroupId;
 
 void main() {
     float instanceId = float(gl_InstanceID);
@@ -26,9 +30,15 @@ void main() {
     float v = floor(instanceId / textureWidth) / textureWidth;
     vec2 uv = vec2(u, v);
 
+    //CALCULATE GROUP ID
+    float totalBoids = textureWidth * textureWidth;
+    float boidsPerGroup = totalBoids / 10.0; // MAX_GROUP_COUNT
+    vGroupId = floor(instanceId / boidsPerGroup);
+
     vec3 boidPosition = texture2D(texturePosition, uv).xyz;
     vec4 velocityData = texture2D(textureVelocity, uv);
     vec3 velocity = velocityData.xyz;
+    vTurnDirection = velocityData.w / 10.0; // Get direction data from alpha channel
 
     float adjustedScale = scale * (1.0 + ((instanceId / textureWidth) / 24.0));
     vec3 animatedPosition = position * adjustedScale;
@@ -70,27 +80,51 @@ void main() {
     }
 
     //FISH ANIMATION
-    if (modelType == 3.0) { 
+    if (modelType == 3.0) {
         float wavePhase = time * animationSpeed * 0.8 + instancePhaseOffset;
+
+        float normalizedZ = (-animatedPosition.z) / adjustedScale;
+        normalizedZ = clamp(normalizedZ, 0.0, 1.0);
+
+        float amplitude = smoothstep(-0.1, 0.1, normalizedZ);
+        amplitude = amplitude * amplitude;
+
+        //BASE WIGGLE
+        float strength = 1.0;
+        float smoothness = 0.3;
+        float waveInput = wavePhase + (animatedPosition.z / adjustedScale) * smoothness;
+        float wave = sin(waveInput) * (amplitude * strength);
+
+        float smoothWave = smoothstep(-1.0, 1.0, sin(waveInput)) * 2.0 - 1.0;
+        smoothWave *= (amplitude * strength);
+
+        animatedPosition.x += smoothWave * adjustedScale;
+    }
+
+    //LONGFISH ANIMATION
+    if (modelType == 5.0) {
+        float wavePhase = time * animationSpeed * 1.2 + instancePhaseOffset;
 
         float normalizedZ = (-animatedPosition.z) / adjustedScale;
         normalizedZ = clamp(normalizedZ, 0.0, 1.0);
 
         float amplitude = normalizedZ * normalizedZ;
 
-        //BASE WIGGLE
-        float strength = 2.0;
-        float smoothness = 0.2; 
-        float wave = sin(wavePhase + (animatedPosition.z / adjustedScale) * smoothness) * (amplitude * strength);
+        float strength = 1.5;
+        float smoothness = 0.4;
+        float waveInput = wavePhase + (animatedPosition.z / adjustedScale) * smoothness;
 
-        animatedPosition.x += wave * adjustedScale;
+        float squiggle = sin(waveInput) * (amplitude * strength);
+        float secondarySquiggle = sin(waveInput * 2.1) * (amplitude * strength * 0.3);
+
+        animatedPosition.x += (squiggle + secondarySquiggle) * adjustedScale;
     }
     
     
     //JELLYFISH ANIMATION
     if (modelType == 4.0) {
         //VERTICAL
-        float wavePhase = time * animationSpeed * 0.4 + instancePhaseOffset;
+        float wavePhase = time * animationSpeed * 0.2 + instancePhaseOffset;
 
         float radialDistance = length(animatedPosition.xz) / adjustedScale;
         radialDistance = clamp(radialDistance, 0.0, 1.0);
@@ -98,21 +132,26 @@ void main() {
         float zNorm = (animatedPosition.z + adjustedScale) / (2.0 * adjustedScale);
         float zPosition = smoothstep(0.0, 1.0, zNorm);
 
-        float amplitude = radialDistance * zPosition * 2.0;
+        //HEAD BOB
+        float topMask = smoothstep(-0.2, 0.5, animatedPosition.z / adjustedScale);
+
+        float amplitude = radialDistance * zPosition * 2.0 * topMask;
         float wave = sin(wavePhase + animatedPosition.z / adjustedScale * 0.5) * amplitude;
 
         animatedPosition.z += wave * adjustedScale;
-        
-        //HORIZONTAL MOVEMENT
+
+        //TAILS
         float squigglePhase = time * animationSpeed * 0.6 + instancePhaseOffset;
 
         float normalizedZ = (-animatedPosition.z) / adjustedScale;
         normalizedZ = clamp(normalizedZ, 0.0, 1.0);
 
-        amplitude = normalizedZ * normalizedZ;
+        float tailMask = smoothstep(-4.0, -6.0, animatedPosition.z / adjustedScale);
+
+        amplitude = normalizedZ * normalizedZ * tailMask;
 
         float strength = 2.0;
-        float smoothness = 0.2; 
+        float smoothness = 0.2;
         wave = sin(squigglePhase + (animatedPosition.z / adjustedScale) * smoothness) * (amplitude * strength);
 
         animatedPosition.x += wave * adjustedScale;
@@ -122,6 +161,29 @@ void main() {
         float bob = sin(wavePhase) * bobAmplitude;
         animatedPosition.z += bob;
     }
+
+if (modelType != 2.0) {
+
+
+    float normalizedZ = animatedPosition.z / 14.0; //-1 to 1
+
+    float distanceFromTail = clamp((animatedPosition.z + 14.0) / 28.0, 0.0, 1.0);
+
+    float bendAngle = vTurnDirection * distanceFromTail * distanceFromTail * 20.5;
+
+    float cosAngle = cos(bendAngle);
+    float sinAngle = sin(bendAngle);
+
+    float newX = animatedPosition.x * cosAngle - animatedPosition.z * sinAngle;
+    float newZ = animatedPosition.x * sinAngle + animatedPosition.z * cosAngle;
+
+    animatedPosition.x = newX;
+    animatedPosition.z = newZ;
+
+
+
+}
+
 
 
 

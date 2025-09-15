@@ -9,6 +9,12 @@ uniform float textureWidth;
 uniform float speed;
 uniform float boundsHalf;
 uniform float groupCount;
+uniform float time;
+uniform float attractionForce;
+uniform vec3 attractionPoint;
+uniform float attractionDistance;
+uniform bool isAttracting;
+uniform bool isRepulsing;
 
 void main() {
   vec2 uv = gl_FragCoord.xy / resolution.xy;
@@ -88,6 +94,7 @@ void main() {
     }
   }
 
+  vec3 previousVelocity = velocity;
   vec3 newVelocity = velocity;
 
   //SEPARATION
@@ -129,7 +136,31 @@ void main() {
   );
 
   newVelocity += noise;
-  
+
+  //ATTRACTION FORCE
+  if (isAttracting) {
+    vec3 toAttraction = attractionPoint - position;
+    float distanceToAttraction = length(toAttraction);
+
+    if (distanceToAttraction < attractionDistance && distanceToAttraction > 0.1) {
+      vec3 attractionDirection = normalize(toAttraction);
+      float attractionStrength = attractionForce * (1.0 - distanceToAttraction / attractionDistance);
+      newVelocity += attractionDirection * attractionStrength;
+    }
+  }
+
+  //REPULSION FORCE
+  if (isRepulsing) {
+    vec3 toRepulsion = attractionPoint - position;
+    float distanceToRepulsion = length(toRepulsion);
+
+    if (distanceToRepulsion < attractionDistance && distanceToRepulsion > 0.1) {
+      vec3 repulsionDirection = -normalize(toRepulsion);
+      float repulsionStrength = attractionForce * (1.0 - distanceToRepulsion / attractionDistance);
+      newVelocity += repulsionDirection * repulsionStrength;
+    }
+  }
+
   //CENTER FORCE
   float distanceFromCenter = length(position);
   vec3 toCenter = -normalize(position);
@@ -146,6 +177,28 @@ void main() {
     newVelocity = normalize(velocity + vec3(0.1, 0.1, 0.1)) * individualSpeed;
   }
 
-  
-  gl_FragColor = vec4(newVelocity, 0.0);
+  //CALCULATE LOCAL HORIZONTAL DIRECTION BEFORE SMOOTHING
+  vec3 previousForward = normalize(previousVelocity);
+  vec3 currentForward = normalize(newVelocity);
+
+  //TURN DIRECTION
+  vec3 up = vec3(0.0, 1.0, 0.0);
+  vec3 right = normalize(cross(previousForward, up));
+
+  vec3 turnVector = cross(previousForward, currentForward);
+  float newTurnDirection = clamp(dot(turnVector, up) * 10.0, -1.0, 1.0);
+
+  float previousTurnDirection = texture2D(textureVelocity, uv).w / 10.0;
+
+
+  //SMOOTH
+  float smoothingFactor = 0.7;
+  float directionSmoothingFactor = 0.9;
+
+
+  newVelocity = mix(newVelocity, previousVelocity, smoothingFactor);
+  newTurnDirection = mix(newTurnDirection, previousTurnDirection, directionSmoothingFactor);
+
+  //turnDirection = sin(time * 2.3);
+  gl_FragColor = vec4(newVelocity, newTurnDirection * 5.0); 
 }

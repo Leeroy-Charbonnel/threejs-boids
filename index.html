@@ -8,18 +8,21 @@
   </head>
   <body>
     <div id="app"></div>
-    <div id="preset-panel" class="preset-panel">
-      <div class="preset-header">Presets</div>
-      <div class="preset-section">
-        <div class="preset-section-title">Predefined</div>
-        <div id="predefined-presets" class="preset-list"></div>
+    <div id="preset-panel" class="lil-gui root allow-touch-styles autoPlace">
+      <div class="lil-gui">
+        <button class="title" aria-expanded="true">Predefined</button>
+        <div class="children" id="predefined-presets"></div>
       </div>
-      <div class="preset-section">
-        <div class="preset-section-title">Custom</div>
-        <div id="custom-presets" class="preset-list"></div>
-        <div class="preset-save">
-          <input type="text" id="preset-name-input" placeholder="Save current config. as ..." class="preset-input">
-          <button id="save-preset-btn" class="preset-btn">Save</button>
+      <div class="lil-gui">
+        <button class="title" aria-expanded="true">Custom</button>
+        <div class="children">
+          <div id="custom-presets"></div>
+          <div class="controller function">
+            <div class="widget">
+              <input type="text" id="preset-name-input" placeholder="Save current config. as ...">
+              <button id="save-preset-btn"><div class="name">Save</div></button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
